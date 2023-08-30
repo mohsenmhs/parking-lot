@@ -1,16 +1,25 @@
 import * as React from "react";
 import { PARKING_CAPACITY } from "../config";
-import { ParkingContextType, ParkingSpace } from "./types";
+import {
+  ParkingContextType,
+  ParkingSpace,
+  ParkingSpaceWithTicket,
+} from "./types";
+import { getRandumNumber } from "../utils/utils";
 
 export const ParkingContext = React.createContext<
   ParkingContextType | undefined
 >(undefined);
 
 function initParking(): ParkingSpace[] {
-  return [...Array(PARKING_CAPACITY)].map((_, idx: number) => ({
-    spaceNumber: idx + 1,
-    ticket: null,
-  }));
+  const parkingSpaces: ParkingSpace[] = localStorage.getItem("parkingSpaces")
+    ? JSON.parse(localStorage.getItem("parkingSpaces") || "")
+    : [...Array(PARKING_CAPACITY)].map((_, idx: number) => ({
+        spaceNumber: idx + 1,
+        ticket: null,
+      }));
+
+  return parkingSpaces;
 }
 
 export function ParkingContextProvider({
@@ -20,27 +29,43 @@ export function ParkingContextProvider({
 }) {
   const [parkingSpaces, setParkingSpaces] = React.useState(initParking());
 
-  const updateParkingSpace = (spaceNumber: number, ticket: string | null) => {
-    setParkingSpaces((prev: ParkingSpace[]) =>
-      prev.map((space) =>
-        space.spaceNumber === spaceNumber ? { ...space, ticket } : space
+  const updateParkingSpace = (parkingSpace: ParkingSpace) => {
+    setParkingSpaces((prev: ParkingSpace[]) => {
+      const temp = prev.map((space) =>
+        space.spaceNumber === parkingSpace.spaceNumber ? parkingSpace : space
+      );
+      localStorage.setItem("parkingSpaces", JSON.stringify(temp));
+      return temp;
+    });
+
+    return parkingSpace;
+  };
+
+  const park = (spaceNumber: number) => {
+    const parkingSpace: ParkingSpaceWithTicket = {
+      spaceNumber,
+      ticket: {
+        barcode: getRandumNumber(16).toString(),
+      },
+    };
+    const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
+      const temp = updateParkingSpace(parkingSpace) as ParkingSpaceWithTicket;
+      if(temp) resolve(temp);
+      else rejct("Error!")
+    });
+    return p;
+  };
+
+  const leave = (spaceNumber: number) => {
+    const p = new Promise<ParkingSpace>((resolve) =>
+      resolve(
+        updateParkingSpace({
+          spaceNumber,
+          ticket: null,
+        })
       )
     );
-  };
-
-  const park = async (spaceNumber: number) => {
-    const ticket = `ticket-${spaceNumber}`;
-    const p = new Promise((resolve) =>
-      resolve(updateParkingSpace(spaceNumber, ticket))
-    );
-    return await p;
-  };
-
-  const leave = async (spaceNumber: number) => {
-    const p = new Promise((resolve) =>
-      resolve(updateParkingSpace(spaceNumber, null))
-    );
-    return await p;
+    return p;
   };
 
   const initialState: ParkingContextType = {

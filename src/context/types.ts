@@ -1,10 +1,18 @@
 export interface ParkingSpace {
   spaceNumber: number;
-  ticket: string | null;
+  ticket: {
+    barcode: string;
+  } | null;
+}
+
+export interface ParkingSpaceWithTicket extends ParkingSpace {
+  ticket: {
+    barcode: string;
+  }
 }
 
 export interface ParkingContextType {
   parkingSpaces: ParkingSpace[];
-  park: (spaceNumber: number) => void;
-  leave: (spaceNumber: number) => void;
+  park: (spaceNumber: number) => Promise<ParkingSpaceWithTicket>;
+  leave: (spaceNumber: number) => Promise<ParkingSpace>;
 }
