@@ -3,3 +3,12 @@ export function getRandumNumber(length: number) {
   const max = Math.pow(10, length);
   return Math.floor(Math.random() * (max - min) + min);
 }
+
+export function formattedDate(date: Date) {
+  return date.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
