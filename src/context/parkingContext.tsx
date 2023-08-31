@@ -28,6 +28,7 @@ export function ParkingContextProvider({
   children: React.ReactNode;
 }) {
   const [parkingSpaces, setParkingSpaces] = React.useState(initParking());
+  const [spacePrice, setSpacePrice] = React.useState<string | null>(null);
 
   const updateParkingSpace = (parkingSpace: ParkingSpace) => {
     setParkingSpaces((prev: ParkingSpace[]) => {
@@ -46,12 +47,13 @@ export function ParkingContextProvider({
       spaceNumber,
       ticket: {
         barcode: getRandumNumber(16).toString(),
+        enterDate: Date.now(), // get current date
       },
     };
     const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
       const temp = updateParkingSpace(parkingSpace) as ParkingSpaceWithTicket;
-      if(temp) resolve(temp);
-      else rejct("Error!")
+      if (temp) resolve(temp);
+      else rejct("Error!");
     });
     return p;
   };
@@ -72,6 +74,8 @@ export function ParkingContextProvider({
     parkingSpaces,
     park,
     leave,
+    spacePrice,
+    setSpacePrice,
   };
 
   return (
