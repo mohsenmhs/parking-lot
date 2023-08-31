@@ -3,7 +3,9 @@ import { PARKING_CAPACITY } from "../config";
 import {
   ParkingContextType,
   ParkingSpace,
+  ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
+  PaymentMethod,
 } from "./types";
 import { getRandumNumber } from "../utils/utils";
 
@@ -70,12 +72,28 @@ export function ParkingContextProvider({
     return p;
   };
 
+  const ticketPayment = (
+    parkingSpace: ParkingSpaceWithTicket,
+    paymentMethod: PaymentMethod
+  ) => {
+    parkingSpace.ticket.paymentMethod = paymentMethod;
+    parkingSpace.ticket.paymentDate = Date.now();
+
+    const p = new Promise<ParkingSpaceWithPaidTicket>((resolve, rejct) => {
+      const temp = updateParkingSpace(parkingSpace) as ParkingSpaceWithPaidTicket;
+      if (temp) resolve(temp);
+      else rejct("Error!");
+    });
+    return p;
+  };
+
   const initialState: ParkingContextType = {
     parkingSpaces,
     park,
     leave,
     spacePrice,
     setSpacePrice,
+    ticketPayment
   };
 
   return (
