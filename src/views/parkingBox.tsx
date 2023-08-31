@@ -6,13 +6,13 @@ import {
   ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
   PaymentMethod,
-  paymentMethods,
 } from "../context/types";
 import { formattedDate } from "../utils/utils";
 import {
   calculatePriceByDates,
   calculatePriceByParkingSpace,
 } from "../services/parking";
+import { paymentMethods } from "../context/constant";
 
 export function ParkingBox({
   parkingSpace,

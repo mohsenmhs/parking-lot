@@ -1,3 +1,5 @@
+import { paymentMethods } from "./constant";
+
 export interface ParkingSpace {
   spaceNumber: number;
   ticket: {
@@ -40,5 +42,4 @@ export interface ParkingContextType {
   ) => Promise<ParkingSpaceWithPaidTicket>;
 }
 
-export const paymentMethods = ["credit card", "debit", "card", "cash"];
 export type PaymentMethod = (typeof paymentMethods)[number];

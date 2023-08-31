@@ -4,14 +4,14 @@ import { useParking } from "../context/parkingContext";
 import {
   ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
-  PaymentMethod,
-  paymentMethods,
+  PaymentMethod
 } from "../context/types";
 import {
   calculatePriceByDates,
   calculatePriceByParkingSpace,
 } from "../services/parking";
 import { formattedDate } from "../utils/utils";
+import { paymentMethods } from "../context/constant";
 
 export function ParkingSpaceModalComponent() {
   const { selectedParkingSpace, setSelectedParkingSpace } = useParking();
