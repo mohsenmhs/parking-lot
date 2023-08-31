@@ -30,7 +30,7 @@ export function ParkingContextProvider({
   children: React.ReactNode;
 }) {
   const [parkingSpaces, setParkingSpaces] = React.useState(initParking());
-  const [spacePrice, setSpacePrice] = React.useState<string | null>(null);
+  const [selectedParkingSpace, setSelectedParkingSpace] = React.useState<ParkingSpaceWithTicket | null>(null);
 
   const updateParkingSpace = (parkingSpace: ParkingSpace) => {
     setParkingSpaces((prev: ParkingSpace[]) => {
@@ -91,9 +91,9 @@ export function ParkingContextProvider({
     parkingSpaces,
     park,
     leave,
-    spacePrice,
-    setSpacePrice,
-    ticketPayment
+    ticketPayment,
+    selectedParkingSpace,
+    setSelectedParkingSpace
   };
 
   return (

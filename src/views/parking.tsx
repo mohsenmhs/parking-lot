@@ -40,11 +40,11 @@ function OuterRow({ start, end }: { start: number; end: number }) {
 }
 
 export default function ParkingView() {
-  const { spacePrice } = useParking();
+  const { selectedParkingSpace } = useParking();
 
   return (
     <Container>
-      {spacePrice && <ParkingSpacePrice price={spacePrice} />}
+      {selectedParkingSpace && <ParkingSpacePrice />}
       <Parking>
         <OuterRow start={0} end={16} />
         <div />

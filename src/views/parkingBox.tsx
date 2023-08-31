@@ -9,13 +9,14 @@ import {
   paymentMethods,
 } from "../context/types";
 import { formattedDate } from "../utils/utils";
+import { calculatePriceByParkingSpace } from "../services/parking";
 
 export function ParkingBox({
   parkingSpace,
 }: {
   parkingSpace: ParkingSpace;
 }): JSX.Element {
-  const { park, leave, parkingSpaces, setSpacePrice, ticketPayment } =
+  const { park, leave, parkingSpaces, ticketPayment, setSelectedParkingSpace } =
     useParking();
   const { spaceNumber, ticket } = parkingSpace;
 
@@ -52,7 +53,8 @@ export function ParkingBox({
   (window as any).getTicket = getTicket; //To access getTicket from developer console!
 
   const calculatePrice = (barcode: string) => {
-    setSpacePrice(null);
+
+    setSelectedParkingSpace(null);
 
     const parkingSpace = getParkingSpaceByBarcode(barcode);
 
@@ -60,7 +62,7 @@ export function ParkingBox({
       const price = calculatePriceByParkingSpace(
         parkingSpace as ParkingSpaceWithTicket
       );
-      setSpacePrice("€" + price);
+      setSelectedParkingSpace(parkingSpace as ParkingSpaceWithTicket);
       if (price === 0) {
         //Paid before and display Payment Receipt !
         console.log("******** Payment Receipt *********");
@@ -78,25 +80,11 @@ export function ParkingBox({
     }
   };
 
-  (window as any).calculatePrice = calculatePrice;
+  (window as any).calculatePrice = calculatePrice; //To access calculatePrice from developer console!
 
-  const calculatePriceByParkingSpace = (
-    parkingSpace: ParkingSpaceWithTicket
-  ) => {
-    if (parkingSpace.ticket?.paymentDate) {
-      return 0; // Ticket paid before
-    }
-    const exitDate = Date.now();
-    const hours = Math.ceil(
-      (exitDate - parkingSpace.ticket.enterDate) / (60 * 60 * 1000)
-    );
-    return hours * 2;
-  };
 
   const calculateSpacePrice = () => {
-    setSpacePrice(
-      "€" + calculatePriceByParkingSpace(parkingSpace as ParkingSpaceWithTicket)
-    );
+    setSelectedParkingSpace(parkingSpace as ParkingSpaceWithTicket);
   };
 
   const getParkingSpaceByBarcode = (barcode: string) => {
@@ -127,7 +115,7 @@ export function ParkingBox({
     }
   };
 
-  (window as any).payTicket = payTicket;
+  (window as any).payTicket = payTicket; //To access payTicket from developer console!
 
   return (
     <ParkingBoxContainer className={ticket ? "occupied" : "free"}>

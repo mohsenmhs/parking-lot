@@ -30,8 +30,10 @@ export interface ParkingContextType {
   parkingSpaces: ParkingSpace[];
   park: (spaceNumber: number) => Promise<ParkingSpaceWithTicket>;
   leave: (spaceNumber: number) => Promise<ParkingSpace>;
-  spacePrice: string | null;
-  setSpacePrice: (spacePrice: string | null) => void;
+  selectedParkingSpace: ParkingSpaceWithTicket | null;
+  setSelectedParkingSpace: (
+    selectedParkingSpace: ParkingSpaceWithTicket | null
+  ) => void;
   ticketPayment: (
     parkingSpace: ParkingSpaceWithTicket,
     paymentMethod: PaymentMethod
