@@ -2,7 +2,7 @@ import * as React from "react";
 import styled from "styled-components";
 import { useParking } from "../context/parkingContext";
 import { ParkingBox } from "./parkingBox";
-import { ParkingSpacePrice } from "./parkingSpacePrice";
+import { ParkingSpaceModalComponent } from "./ParkingSpaceModalComponent";
 
 function InnerRow({
   start,
@@ -44,7 +44,7 @@ export default function ParkingView() {
 
   return (
     <Container>
-      {selectedParkingSpace && <ParkingSpacePrice />}
+      {selectedParkingSpace && <ParkingSpaceModalComponent />}
       <Parking>
         <OuterRow start={0} end={16} />
         <div />
@@ -54,9 +54,6 @@ export default function ParkingView() {
         <OuterRow start={38} end={54} />
       </Parking>
       <Message>Please click on a parking place to park or leave.</Message>
-      <Message>
-        Please click on blue box to get the parking place price.
-      </Message>
     </Container>
   );
 }

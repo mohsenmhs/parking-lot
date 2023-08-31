@@ -9,7 +9,10 @@ import {
   paymentMethods,
 } from "../context/types";
 import { formattedDate } from "../utils/utils";
-import { calculatePriceByParkingSpace } from "../services/parking";
+import {
+  calculatePriceByDates,
+  calculatePriceByParkingSpace,
+} from "../services/parking";
 
 export function ParkingBox({
   parkingSpace,
@@ -53,25 +56,43 @@ export function ParkingBox({
   (window as any).getTicket = getTicket; //To access getTicket from developer console!
 
   const calculatePrice = (barcode: string) => {
-
     setSelectedParkingSpace(null);
 
     const parkingSpace = getParkingSpaceByBarcode(barcode);
 
     if (parkingSpace) {
-      const price = calculatePriceByParkingSpace(
-        parkingSpace as ParkingSpaceWithTicket
-      );
-      setSelectedParkingSpace(parkingSpace as ParkingSpaceWithTicket);
+      const ps = parkingSpace as ParkingSpaceWithPaidTicket;
+      const price = calculatePriceByParkingSpace(ps);
+      setSelectedParkingSpace(ps);
       if (price === 0) {
         //Paid before and display Payment Receipt !
         console.log("******** Payment Receipt *********");
         console.log("*  Barcode:   ", barcode, " *");
-        console.log("*  Enter Date:   ", formattedDate(new Date((parkingSpace as ParkingSpaceWithPaidTicket).ticket.enterDate)), " *");
-        console.log("*  Payment Date: ", formattedDate(new Date((parkingSpace as ParkingSpaceWithPaidTicket).ticket.paymentDate)), " *");
-        
-        const spaces = 12 - (parkingSpace as ParkingSpaceWithPaidTicket).ticket.paymentMethod.length;
-        console.log("*  Payment Method:", Array(spaces).join(" "), parkingSpace.ticket?.paymentMethod, " *");
+        console.log(
+          "*  Enter Date:   ",
+          formattedDate(new Date(ps.ticket.enterDate)),
+          " *"
+        );
+        console.log(
+          "*  Payment Date: ",
+          formattedDate(new Date(ps.ticket.paymentDate)),
+          " *"
+        );
+
+        const spaces = 12 - ps.ticket.paymentMethod.length;
+        console.log(
+          "*  Payment Method:",
+          Array(spaces).join(" "),
+          parkingSpace.ticket?.paymentMethod,
+          " *"
+        );
+
+        const paid =
+          "€" +
+          calculatePriceByDates(ps.ticket.enterDate, ps.ticket.paymentDate);
+        const paidSpaces = 22 - paid.length;
+        console.log("*  Paid:", Array(paidSpaces).join(" "), paid, " *");
+
         console.log("**********************************");
       }
       return price;
@@ -81,7 +102,6 @@ export function ParkingBox({
   };
 
   (window as any).calculatePrice = calculatePrice; //To access calculatePrice from developer console!
-
 
   const calculateSpacePrice = () => {
     setSelectedParkingSpace(parkingSpace as ParkingSpaceWithTicket);
@@ -97,8 +117,12 @@ export function ParkingBox({
     if (!paymentMethods.includes(paymentMethod)) {
       return `No payment method "${paymentMethod}" found!`;
     }
-    
+
     const parkingSpace = getParkingSpaceByBarcode(barcode);
+
+    if(parkingSpace?.ticket?.paymentDate) {
+      return `Ticket #${barcode} has been paid!`;
+    }
 
     if (parkingSpace) {
       try {
@@ -126,7 +150,10 @@ export function ParkingBox({
         {spaceNumber}
       </ParkingBoxContent>
       {ticket && (
-        <ParkingBoxContent className="price" onClick={calculateSpacePrice}>
+        <ParkingBoxContent
+          className={parkingSpace.ticket?.paymentDate ? "paid price" : "price"}
+          onClick={calculateSpacePrice}
+        >
           €
         </ParkingBoxContent>
       )}
@@ -160,5 +187,9 @@ const ParkingBoxContent = styled.div`
   }
   &.price {
     background: #00bcd4;
+
+    &.paid {
+      background: #66BB6A;
+    }
   }
 `;
