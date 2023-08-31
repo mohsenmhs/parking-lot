@@ -1,45 +1,24 @@
 import * as React from "react";
 import styled from "styled-components";
 import { useParking } from "../context/parkingContext";
-import { ParkingSpace, ParkingSpaceWithTicket } from "../context/types";
+import { ParkingSpace } from "../context/types";
 
 function ParkingBox({
   parkingSpace,
 }: {
   parkingSpace: ParkingSpace;
 }): JSX.Element {
-  const { park, leave, parkingSpaces } = useParking();
+  const { park, leave } = useParking();
   const { spaceNumber, ticket } = parkingSpace;
 
   const togglePlace = async () => {
     try {
       const res = ticket ? leave(spaceNumber) : park(spaceNumber);
-      res.then((e) => {
-        console.log(e.ticket?.barcode);
-      });
+      console.log(ticket ? "Goodbye!" : "Welcome!");
     } catch (error) {
       console.log(error);
     }
   };
-
-  const getTicket = async () => {
-    const firstEmptyParkingSpace = parkingSpaces.find((obj) => {
-      return !obj.ticket;
-    });
-
-    if (firstEmptyParkingSpace) {
-      try {
-        const res: ParkingSpaceWithTicket = await park(firstEmptyParkingSpace.spaceNumber);
-        return res.ticket.barcode;
-      } catch (error) {
-        console.log(error);
-      }
-    } else {
-      console.log("Sorry, parking lot is full!");
-    }
-  };
-
-  (window as any).getTicket = getTicket; //To access getTicket from developer console!
 
   return (
     <ParkingBoxContainer
