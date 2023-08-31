@@ -1,0 +1,15 @@
+# IDE - VSCode
+.vscode/*
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# parcel
+.parcel-cache
+
+#dist
+/dist
+
+# dependencies
+/node_modules
