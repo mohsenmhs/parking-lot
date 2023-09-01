@@ -12,14 +12,14 @@ import {
   calculatePriceByDates,
   calculatePriceByParkingSpace,
 } from "../services/parking";
-import { paymentMethods } from "../context/constant";
+import { paymentMethods, ticketState } from "../context/constant";
 
 export function ParkingBox({
   parkingSpace,
 }: {
   parkingSpace: ParkingSpace;
 }): JSX.Element {
-  const { park, leave, parkingSpaces, ticketPayment, setSelectedParkingSpace } =
+  const { park, leave, parkingSpaces, setSelectedParkingSpace, updateTicket } =
     useParking();
   const { spaceNumber, ticket } = parkingSpace;
 
@@ -55,47 +55,55 @@ export function ParkingBox({
 
   (window as any).getTicket = getTicket; //To access getTicket from developer console!
 
-  const calculatePrice = (barcode: string) => {
+  const calculatePrice = async (barcode: string) => {
     setSelectedParkingSpace(null);
 
     const parkingSpace = getParkingSpaceByBarcode(barcode);
 
     if (parkingSpace) {
-      const ps = parkingSpace as ParkingSpaceWithPaidTicket;
-      const price = calculatePriceByParkingSpace(ps);
-      setSelectedParkingSpace(ps);
-      if (price === 0) {
-        //Paid before and display Payment Receipt !
-        console.log("******** Payment Receipt *********");
-        console.log("*  Barcode:   ", barcode, " *");
-        console.log(
-          "*  Enter Date:   ",
-          formattedDate(new Date(ps.ticket.enterDate)),
-          " *"
-        );
-        console.log(
-          "*  Payment Date: ",
-          formattedDate(new Date(ps.ticket.paymentDate)),
-          " *"
-        );
+      try {
+        await getTicketState(barcode); //update payment state!
 
-        const spaces = 12 - ps.ticket.paymentMethod.length;
-        console.log(
-          "*  Payment Method:",
-          Array(spaces).join(" "),
-          parkingSpace.ticket?.paymentMethod,
-          " *"
-        );
+        const ps = parkingSpace as ParkingSpaceWithPaidTicket;
+        setSelectedParkingSpace(ps);
 
-        const paid =
-          "€" +
-          calculatePriceByDates(ps.ticket.enterDate, ps.ticket.paymentDate);
-        const paidSpaces = 22 - paid.length;
-        console.log("*  Paid:", Array(paidSpaces).join(" "), paid, " *");
+        const price = calculatePriceByParkingSpace(ps);
+        if (price === 0) {
+          //Paid before and display Payment Receipt !
+          console.log("******** Payment Receipt *********");
+          console.log("*  Barcode:   ", barcode, " *");
+          console.log(
+            "*  Enter Date:   ",
+            formattedDate(new Date(ps.ticket.enterDate)),
+            " *"
+          );
+          console.log(
+            "*  Payment Date: ",
+            formattedDate(new Date(ps.ticket.paymentDate)),
+            " *"
+          );
 
-        console.log("**********************************");
-      }
-      return price;
+          const spaces = 12 - ps.ticket.paymentMethod.length;
+          console.log(
+            "*  Payment Method:",
+            Array(spaces).join(" "),
+            parkingSpace.ticket?.paymentMethod,
+            " *"
+          );
+
+          const paid =
+            "€" +
+            calculatePriceByDates(ps.ticket.enterDate, ps.ticket.paymentDate);
+          const paidSpaces = 22 - paid.length;
+          console.log("*  Paid:", Array(paidSpaces).join(" "), paid, " *");
+
+          console.log("**********************************");
+
+          return 0;
+        }
+
+        return price;
+      } catch (error) {}
     } else {
       return `No barcode #${barcode} found!`;
     }
@@ -120,17 +128,26 @@ export function ParkingBox({
 
     const parkingSpace = getParkingSpaceByBarcode(barcode);
 
-    if(parkingSpace?.ticket?.paymentDate) {
-      return `Ticket #${barcode} has been paid!`;
-    }
-
     if (parkingSpace) {
       try {
-        await ticketPayment(
-          parkingSpace as ParkingSpaceWithTicket,
-          paymentMethod
-        );
-        return `Ticket #${barcode} paid!`;
+        await getTicketState(barcode); //update payment state!
+
+        if (parkingSpace?.ticket?.state === ticketState.paid) {
+          return `Ticket #${barcode} has been paid!`;
+        } else {
+          const ps = parkingSpace as ParkingSpaceWithTicket;
+
+          await updateTicket({
+            ...ps,
+            ticket: {
+              ...ps.ticket,
+              paymentMethod: paymentMethod,
+              paymentDate: Date.now(),
+              state: ticketState.paid,
+            },
+          });
+          return `Ticket #${barcode} paid!`;
+        }
       } catch (error) {
         console.log(error);
       }
@@ -140,6 +157,41 @@ export function ParkingBox({
   };
 
   (window as any).payTicket = payTicket; //To access payTicket from developer console!
+
+  const getTicketState = async (barcode: string) => {
+    const parkingSpace = getParkingSpaceByBarcode(barcode);
+
+    if (parkingSpace?.ticket?.state === ticketState.unpaid) {
+      return ticketState.unpaid;
+    }
+
+    if (parkingSpace) {
+      try {
+        //if State was paid or undefined (form old version localstorage)
+        const ps = parkingSpace as ParkingSpaceWithPaidTicket;
+        const spentMinutesFromPaidDate =
+          (Date.now() - ps.ticket.paymentDate) / (60 * 1000);
+
+        const res = await updateTicket({
+          ...ps,
+          ticket: {
+            ...ps.ticket,
+            state:
+              spentMinutesFromPaidDate <= 15
+                ? ticketState.paid
+                : ticketState.unpaid,
+          },
+        });
+        return res.ticket.state;
+      } catch (error) {
+        console.log(error);
+      }
+    } else {
+      return `No barcode #${barcode} found!`;
+    }
+  };
+
+  (window as any).getTicketState = getTicketState; //To access payTicket from developer console!
 
   return (
     <ParkingBoxContainer className={ticket ? "occupied" : "free"}>
@@ -189,7 +241,7 @@ const ParkingBoxContent = styled.div`
     background: #00bcd4;
 
     &.paid {
-      background: #66BB6A;
+      background: #66bb6a;
     }
   }
 `;

@@ -8,6 +8,7 @@ import {
   PaymentMethod,
 } from "./types";
 import { getRandumNumber } from "../utils/utils";
+import { ticketState } from "./constant";
 
 export const ParkingContext = React.createContext<
   ParkingContextType | undefined
@@ -30,7 +31,8 @@ export function ParkingContextProvider({
   children: React.ReactNode;
 }) {
   const [parkingSpaces, setParkingSpaces] = React.useState(initParking());
-  const [selectedParkingSpace, setSelectedParkingSpace] = React.useState<ParkingSpaceWithTicket | null>(null);
+  const [selectedParkingSpace, setSelectedParkingSpace] =
+    React.useState<ParkingSpaceWithTicket | null>(null);
 
   const updateParkingSpace = (parkingSpace: ParkingSpace) => {
     setParkingSpaces((prev: ParkingSpace[]) => {
@@ -50,6 +52,7 @@ export function ParkingContextProvider({
       ticket: {
         barcode: getRandumNumber(16).toString(),
         enterDate: Date.now(), // get current date
+        state: ticketState.unpaid,
       },
     };
     const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
@@ -72,15 +75,11 @@ export function ParkingContextProvider({
     return p;
   };
 
-  const ticketPayment = (
-    parkingSpace: ParkingSpaceWithTicket,
-    paymentMethod: PaymentMethod
-  ) => {
-    parkingSpace.ticket.paymentMethod = paymentMethod;
-    parkingSpace.ticket.paymentDate = Date.now();
-
-    const p = new Promise<ParkingSpaceWithPaidTicket>((resolve, rejct) => {
-      const temp = updateParkingSpace(parkingSpace) as ParkingSpaceWithPaidTicket;
+  const updateTicket = (parkingSpace: ParkingSpaceWithTicket) => {
+    const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
+      const temp = updateParkingSpace(
+        parkingSpace
+      ) as ParkingSpaceWithPaidTicket;
       if (temp) resolve(temp);
       else rejct("Error!");
     });
@@ -91,9 +90,9 @@ export function ParkingContextProvider({
     parkingSpaces,
     park,
     leave,
-    ticketPayment,
     selectedParkingSpace,
-    setSelectedParkingSpace
+    setSelectedParkingSpace,
+    updateTicket
   };
 
   return (

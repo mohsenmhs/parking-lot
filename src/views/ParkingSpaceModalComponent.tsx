@@ -4,14 +4,14 @@ import { useParking } from "../context/parkingContext";
 import {
   ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
-  PaymentMethod
+  PaymentMethod,
 } from "../context/types";
 import {
   calculatePriceByDates,
   calculatePriceByParkingSpace,
 } from "../services/parking";
 import { formattedDate } from "../utils/utils";
-import { paymentMethods } from "../context/constant";
+import { paymentMethods, ticketState } from "../context/constant";
 
 export function ParkingSpaceModalComponent() {
   const { selectedParkingSpace, setSelectedParkingSpace } = useParking();
@@ -49,7 +49,7 @@ export function ParkingSpaceModalComponent() {
 
 const PaymentReceipt = () => {
   const { selectedParkingSpace } = useParking();
-  const ps = selectedParkingSpace as ParkingSpaceWithPaidTicket
+  const ps = selectedParkingSpace as ParkingSpaceWithPaidTicket;
   return (
     <PaymentReceiptContainer>
       <div className="bold-text">Payment Receipt</div>
@@ -96,10 +96,7 @@ const PaymentReceipt = () => {
         <div className="receiot-item bold-text">
           <div>Paid:</div>
           <div>
-          €{calculatePriceByDates(
-              ps.ticket.enterDate,
-              ps.ticket.paymentDate
-            )}
+            €{calculatePriceByDates(ps.ticket.enterDate, ps.ticket.paymentDate)}
           </div>
         </div>
       </div>
@@ -116,17 +113,23 @@ const PaymentMethods = ({
   closeModal: () => void;
   price: number;
 }) => {
-  const { ticketPayment, selectedParkingSpace } = useParking();
+  const { selectedParkingSpace, updateTicket } = useParking();
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     React.useState<PaymentMethod | null>(null);
 
   const payNow = async () => {
     try {
-      await ticketPayment(
-        selectedParkingSpace as ParkingSpaceWithTicket,
-        selectedPaymentMethod as PaymentMethod
-      );
+      const ps = selectedParkingSpace as ParkingSpaceWithTicket;
+      await updateTicket({
+        ...ps,
+        ticket: {
+          ...ps.ticket,
+          paymentMethod: selectedPaymentMethod,
+          paymentDate: Date.now(),
+          state: ticketState.paid,
+        },
+      });
 
       closeModal();
     } catch (error) {
