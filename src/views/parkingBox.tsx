@@ -201,9 +201,19 @@ export function ParkingBox({
       >
         {spaceNumber}
       </ParkingBoxContent>
+
+      {ticket?.state === ticketState.paid && (
+        <ParkingBoxContent
+          className={"price state"}
+          onClick={calculateSpacePrice}
+        >
+          11:28
+        </ParkingBoxContent>
+      )}
+
       {ticket && (
         <ParkingBoxContent
-          className={parkingSpace.ticket?.paymentDate ? "paid price" : "price"}
+          className={"price " + ticket?.state}
           onClick={calculateSpacePrice}
         >
           €
@@ -242,6 +252,10 @@ const ParkingBoxContent = styled.div`
 
     &.paid {
       background: #66bb6a;
+    }
+
+    &.state {
+      background: #ffeb3b;
     }
   }
 `;
