@@ -5,23 +5,56 @@ import {
   ParkingSpace,
   ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
-  PaymentMethod,
 } from "./types";
-import { getRandumNumber } from "../utils/utils";
+import { getRandumNumber, paidDateExired } from "../utils/utils";
+import { ticketState } from "./constant";
+import {
+  calculatePriceByDates
+} from "../services/parking";
 
 export const ParkingContext = React.createContext<
   ParkingContextType | undefined
 >(undefined);
 
 function initParking(): ParkingSpace[] {
-  const parkingSpaces: ParkingSpace[] = localStorage.getItem("parkingSpaces")
-    ? JSON.parse(localStorage.getItem("parkingSpaces") || "")
-    : [...Array(PARKING_CAPACITY)].map((_, idx: number) => ({
-        spaceNumber: idx + 1,
-        ticket: null,
-      }));
+  if (localStorage.getItem("parkingSpaces")) {
+    const localStorageParkingSpaces = JSON.parse(
+      localStorage.getItem("parkingSpaces") || ""
+    );
+    return localStorageParkingSpaces.map((parkingSpace: ParkingSpace) => {
+      //if State was undefined (from old version localstorage)
+      if (parkingSpace.ticket && !parkingSpace.ticket?.state)
+        (parkingSpace as ParkingSpaceWithPaidTicket).ticket.state =
+          ticketState.unpaid;
 
-  return parkingSpaces;
+      //if State was paid and expired
+      if (parkingSpace.ticket?.state === ticketState.paid) {
+        const ps = parkingSpace as ParkingSpaceWithPaidTicket;
+        ps.ticket.state = paidDateExired(ps.ticket.paymentDate)
+          ? ticketState.unpaid
+          : ticketState.paid;
+      }
+
+      //if Paid was undefined (from old version localstorage)
+      if (
+        parkingSpace.ticket &&
+        !((parkingSpace as ParkingSpaceWithTicket).ticket?.paid >= 0)
+      ) {
+        parkingSpace.ticket.paid = parkingSpace.ticket.paymentDate
+          ? calculatePriceByDates(
+              parkingSpace.ticket.enterDate,
+              parkingSpace.ticket.paymentDate
+            )
+          : 0;
+      }
+      return parkingSpace;
+    });
+  }
+
+  return [...Array(PARKING_CAPACITY)].map((_, idx: number) => ({
+    spaceNumber: idx + 1,
+    ticket: null,
+  }));
 }
 
 export function ParkingContextProvider({
@@ -30,7 +63,8 @@ export function ParkingContextProvider({
   children: React.ReactNode;
 }) {
   const [parkingSpaces, setParkingSpaces] = React.useState(initParking());
-  const [selectedParkingSpace, setSelectedParkingSpace] = React.useState<ParkingSpaceWithTicket | null>(null);
+  const [selectedParkingSpace, setSelectedParkingSpace] =
+    React.useState<ParkingSpaceWithTicket | null>(null);
 
   const updateParkingSpace = (parkingSpace: ParkingSpace) => {
     setParkingSpaces((prev: ParkingSpace[]) => {
@@ -50,6 +84,8 @@ export function ParkingContextProvider({
       ticket: {
         barcode: getRandumNumber(16).toString(),
         enterDate: Date.now(), // get current date
+        state: ticketState.unpaid,
+        paid: 0,
       },
     };
     const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
@@ -72,15 +108,11 @@ export function ParkingContextProvider({
     return p;
   };
 
-  const ticketPayment = (
-    parkingSpace: ParkingSpaceWithTicket,
-    paymentMethod: PaymentMethod
-  ) => {
-    parkingSpace.ticket.paymentMethod = paymentMethod;
-    parkingSpace.ticket.paymentDate = Date.now();
-
-    const p = new Promise<ParkingSpaceWithPaidTicket>((resolve, rejct) => {
-      const temp = updateParkingSpace(parkingSpace) as ParkingSpaceWithPaidTicket;
+  const updateTicket = (parkingSpace: ParkingSpaceWithTicket) => {
+    const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
+      const temp = updateParkingSpace(
+        parkingSpace
+      ) as ParkingSpaceWithPaidTicket;
       if (temp) resolve(temp);
       else rejct("Error!");
     });
@@ -91,9 +123,9 @@ export function ParkingContextProvider({
     parkingSpaces,
     park,
     leave,
-    ticketPayment,
     selectedParkingSpace,
-    setSelectedParkingSpace
+    setSelectedParkingSpace,
+    updateTicket,
   };
 
   return (

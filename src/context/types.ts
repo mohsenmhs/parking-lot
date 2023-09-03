@@ -1,3 +1,5 @@
+import { paymentMethods, ticketState } from "./constant";
+
 export interface ParkingSpace {
   spaceNumber: number;
   ticket: {
@@ -5,6 +7,8 @@ export interface ParkingSpace {
     enterDate: number;
     paymentMethod?: PaymentMethod | null;
     paymentDate?: number | null;
+    state: keyof typeof ticketState;
+    paid?: number;
   } | null;
 }
 
@@ -14,6 +18,8 @@ export interface ParkingSpaceWithTicket extends ParkingSpace {
     enterDate: number;
     paymentMethod?: PaymentMethod | null;
     paymentDate?: number | null;
+    state: keyof typeof ticketState;
+    paid: number;
   };
 }
 
@@ -23,6 +29,8 @@ export interface ParkingSpaceWithPaidTicket extends ParkingSpace {
     enterDate: number;
     paymentMethod: PaymentMethod;
     paymentDate: number;
+    state: keyof typeof ticketState;
+    paid: number;
   };
 }
 
@@ -34,11 +42,9 @@ export interface ParkingContextType {
   setSelectedParkingSpace: (
     selectedParkingSpace: ParkingSpaceWithTicket | null
   ) => void;
-  ticketPayment: (
+  updateTicket: (
     parkingSpace: ParkingSpaceWithTicket,
-    paymentMethod: PaymentMethod
-  ) => Promise<ParkingSpaceWithPaidTicket>;
+  ) => Promise<ParkingSpaceWithTicket>;
 }
 
-export const paymentMethods = ["credit card", "debit", "card", "cash"];
 export type PaymentMethod = (typeof paymentMethods)[number];
