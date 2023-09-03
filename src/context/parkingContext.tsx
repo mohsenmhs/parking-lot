@@ -5,23 +5,24 @@ import {
   ParkingSpace,
   ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
-  PaymentMethod,
 } from "./types";
 import { getRandumNumber, paidDateExired } from "../utils/utils";
 import { ticketState } from "./constant";
-import { calculatePriceByParkingSpace } from "../services/parking";
+import {
+  calculatePriceByDates
+} from "../services/parking";
 
 export const ParkingContext = React.createContext<
   ParkingContextType | undefined
 >(undefined);
 
 function initParking(): ParkingSpace[] {
-  const localStorageParkingSpaces = JSON.parse(
-    localStorage.getItem("parkingSpaces") || ""
-  );
-  if (localStorageParkingSpaces) {
+  if (localStorage.getItem("parkingSpaces")) {
+    const localStorageParkingSpaces = JSON.parse(
+      localStorage.getItem("parkingSpaces") || ""
+    );
     return localStorageParkingSpaces.map((parkingSpace: ParkingSpace) => {
-      //if State was undefined (form old version localstorage)
+      //if State was undefined (from old version localstorage)
       if (parkingSpace.ticket && !parkingSpace.ticket?.state)
         (parkingSpace as ParkingSpaceWithPaidTicket).ticket.state =
           ticketState.unpaid;
@@ -34,11 +35,15 @@ function initParking(): ParkingSpace[] {
           : ticketState.paid;
       }
 
-      //if State was paid and expired
-      if (parkingSpace.ticket && !parkingSpace.ticket?.paid) {
+      //if Paid was undefined (from old version localstorage)
+      if (
+        parkingSpace.ticket &&
+        !((parkingSpace as ParkingSpaceWithTicket).ticket?.paid >= 0)
+      ) {
         parkingSpace.ticket.paid = parkingSpace.ticket.paymentDate
-          ? calculatePriceByParkingSpace(
-              parkingSpace as ParkingSpaceWithPaidTicket
+          ? calculatePriceByDates(
+              parkingSpace.ticket.enterDate,
+              parkingSpace.ticket.paymentDate
             )
           : 0;
       }

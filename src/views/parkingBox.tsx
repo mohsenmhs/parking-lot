@@ -70,20 +70,20 @@ export function ParkingBox({
         const price = calculatePriceByParkingSpace(ps) - ps.ticket.paid;
         if (price === 0) {
           //Paid before and display Payment Receipt !
-          console.log("******** Payment Receipt *********");
-          console.log("*  Barcode:   ", barcode, " *");
+          console.log("*********** Payment Receipt ***********");
+          console.log("*  Barcode:        ", barcode, " *");
           console.log(
-            "*  Enter Date:   ",
+            "*  Enter Date:        ",
             formattedDate(new Date(ps.ticket.enterDate)),
             " *"
           );
           console.log(
-            "*  Payment Date: ",
+            "*  Payment Date:      ",
             formattedDate(new Date(ps.ticket.paymentDate)),
             " *"
           );
 
-          const spaces = 7 - ps.ticket.paymentMethod.length;
+          const spaces = 12 - ps.ticket.paymentMethod.length;
           console.log(
             "*  Last payment Method:",
             Array(spaces).join(" "),
@@ -92,10 +92,10 @@ export function ParkingBox({
           );
 
           const paid = "€" + ps.ticket.paid;
-          const paidSpaces = 22 - paid.length;
+          const paidSpaces = 27 - paid.length;
           console.log("*  Paid:", Array(paidSpaces).join(" "), paid, " *");
 
-          console.log("**********************************");
+          console.log("***************************************");
 
           return 0;
         }

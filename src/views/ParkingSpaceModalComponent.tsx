@@ -269,7 +269,7 @@ const ParkingSpaceContainer = styled.div`
   }
 `;
 const PaymentReceiptContainer = styled.div`
-  width: 240px;
+  width: 250px;
   border: 1px dashed #676767;
   padding: 10px;
   font-family: monospace;
