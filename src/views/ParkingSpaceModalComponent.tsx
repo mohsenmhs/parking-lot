@@ -6,10 +6,7 @@ import {
   ParkingSpaceWithTicket,
   PaymentMethod,
 } from "../context/types";
-import {
-  calculatePriceByDates,
-  calculatePriceByParkingSpace,
-} from "../services/parking";
+import { calculatePriceByParkingSpace } from "../services/parking";
 import { formattedDate } from "../utils/utils";
 import { paymentMethods, ticketState } from "../context/constant";
 
@@ -17,10 +14,10 @@ export function ParkingSpaceModalComponent() {
   const { selectedParkingSpace, setSelectedParkingSpace } = useParking();
   const closeModal = () => setSelectedParkingSpace(null);
 
-  const price = calculatePriceByParkingSpace(
-    selectedParkingSpace as ParkingSpaceWithTicket
-  );
-
+  const price =
+    calculatePriceByParkingSpace(
+      selectedParkingSpace as ParkingSpaceWithTicket
+    ) - (selectedParkingSpace as ParkingSpaceWithTicket).ticket.paid;
   return (
     <ParkingSpaceModal onClick={closeModal}>
       <ParkingSpaceContainer
@@ -40,16 +37,35 @@ export function ParkingSpaceModalComponent() {
         {price > 0 ? (
           <PaymentMethods closeModal={closeModal} price={price} />
         ) : (
-          <PaymentReceipt />
+          <PaymentReceipt price={price} />
         )}
       </ParkingSpaceContainer>
     </ParkingSpaceModal>
   );
 }
 
-const PaymentReceipt = () => {
-  const { selectedParkingSpace } = useParking();
-  const ps = selectedParkingSpace as ParkingSpaceWithPaidTicket;
+const PaymentReceipt = ({ price }: { price: number }) => {
+  const { selectedParkingSpace, updateTicket } = useParking();
+  const updateParkingSpace = async () => {
+    try {
+      const ps = selectedParkingSpace as ParkingSpaceWithTicket;
+      await updateTicket({
+        ...ps,
+        ticket: {
+          ...ps.ticket,
+          paymentDate: Date.now(),
+          state: ticketState.paid,
+        },
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  React.useEffect(() => {
+    if (selectedParkingSpace?.ticket.state === ticketState.unpaid) {
+      updateParkingSpace();
+    }
+  }, []);
   return (
     <PaymentReceiptContainer>
       <div className="bold-text">Payment Receipt</div>
@@ -87,7 +103,7 @@ const PaymentReceipt = () => {
         </div>
 
         <div className="receiot-item">
-          <div>Payment Method:</div>
+          <div>Last Payment Method:</div>
           <div>{selectedParkingSpace?.ticket.paymentMethod}</div>
         </div>
       </div>
@@ -95,9 +111,7 @@ const PaymentReceipt = () => {
       <div>
         <div className="receiot-item bold-text">
           <div>Paid:</div>
-          <div>
-            €{calculatePriceByDates(ps.ticket.enterDate, ps.ticket.paymentDate)}
-          </div>
+          <div>€{selectedParkingSpace?.ticket.paid}</div>
         </div>
       </div>
 
@@ -128,6 +142,7 @@ const PaymentMethods = ({
           paymentMethod: selectedPaymentMethod,
           paymentDate: Date.now(),
           state: ticketState.paid,
+          paid: price + ps.ticket.paid,
         },
       });
 
@@ -143,6 +158,12 @@ const PaymentMethods = ({
       <div className="price">
         €{price}
         <div className="subtitle">€2 per started hour</div>
+        {selectedParkingSpace && selectedParkingSpace?.ticket.paid > 0 && (
+          <div className="subtitle">
+            You have paid €{selectedParkingSpace?.ticket.paid} on{" "}
+            {formattedDate(new Date(selectedParkingSpace.ticket.enterDate))}
+          </div>
+        )}
       </div>
       <div>How do you want to pay?</div>
       <PaymentMethodItem>
@@ -248,7 +269,7 @@ const ParkingSpaceContainer = styled.div`
   }
 `;
 const PaymentReceiptContainer = styled.div`
-  width: 220px;
+  width: 240px;
   border: 1px dashed #676767;
   padding: 10px;
   font-family: monospace;

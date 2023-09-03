@@ -8,6 +8,7 @@ export interface ParkingSpace {
     paymentMethod?: PaymentMethod | null;
     paymentDate?: number | null;
     state: keyof typeof ticketState;
+    paid?: number;
   } | null;
 }
 
@@ -18,6 +19,7 @@ export interface ParkingSpaceWithTicket extends ParkingSpace {
     paymentMethod?: PaymentMethod | null;
     paymentDate?: number | null;
     state: keyof typeof ticketState;
+    paid: number;
   };
 }
 
@@ -28,6 +30,7 @@ export interface ParkingSpaceWithPaidTicket extends ParkingSpace {
     paymentMethod: PaymentMethod;
     paymentDate: number;
     state: keyof typeof ticketState;
+    paid: number;
   };
 }
 

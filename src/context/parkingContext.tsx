@@ -7,22 +7,49 @@ import {
   ParkingSpaceWithTicket,
   PaymentMethod,
 } from "./types";
-import { getRandumNumber } from "../utils/utils";
+import { getRandumNumber, paidDateExired } from "../utils/utils";
 import { ticketState } from "./constant";
+import { calculatePriceByParkingSpace } from "../services/parking";
 
 export const ParkingContext = React.createContext<
   ParkingContextType | undefined
 >(undefined);
 
 function initParking(): ParkingSpace[] {
-  const parkingSpaces: ParkingSpace[] = localStorage.getItem("parkingSpaces")
-    ? JSON.parse(localStorage.getItem("parkingSpaces") || "")
-    : [...Array(PARKING_CAPACITY)].map((_, idx: number) => ({
-        spaceNumber: idx + 1,
-        ticket: null,
-      }));
+  const localStorageParkingSpaces = JSON.parse(
+    localStorage.getItem("parkingSpaces") || ""
+  );
+  if (localStorageParkingSpaces) {
+    return localStorageParkingSpaces.map((parkingSpace: ParkingSpace) => {
+      //if State was undefined (form old version localstorage)
+      if (parkingSpace.ticket && !parkingSpace.ticket?.state)
+        (parkingSpace as ParkingSpaceWithPaidTicket).ticket.state =
+          ticketState.unpaid;
 
-  return parkingSpaces;
+      //if State was paid and expired
+      if (parkingSpace.ticket?.state === ticketState.paid) {
+        const ps = parkingSpace as ParkingSpaceWithPaidTicket;
+        ps.ticket.state = paidDateExired(ps.ticket.paymentDate)
+          ? ticketState.unpaid
+          : ticketState.paid;
+      }
+
+      //if State was paid and expired
+      if (parkingSpace.ticket && !parkingSpace.ticket?.paid) {
+        parkingSpace.ticket.paid = parkingSpace.ticket.paymentDate
+          ? calculatePriceByParkingSpace(
+              parkingSpace as ParkingSpaceWithPaidTicket
+            )
+          : 0;
+      }
+      return parkingSpace;
+    });
+  }
+
+  return [...Array(PARKING_CAPACITY)].map((_, idx: number) => ({
+    spaceNumber: idx + 1,
+    ticket: null,
+  }));
 }
 
 export function ParkingContextProvider({
@@ -53,6 +80,7 @@ export function ParkingContextProvider({
         barcode: getRandumNumber(16).toString(),
         enterDate: Date.now(), // get current date
         state: ticketState.unpaid,
+        paid: 0,
       },
     };
     const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
@@ -92,7 +120,7 @@ export function ParkingContextProvider({
     leave,
     selectedParkingSpace,
     setSelectedParkingSpace,
-    updateTicket
+    updateTicket,
   };
 
   return (
