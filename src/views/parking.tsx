@@ -2,7 +2,6 @@ import * as React from "react";
 import styled from "styled-components";
 import { useParking } from "../context/parkingContext";
 import { ParkingBox } from "./parkingBox";
-import { ParkingSpaceModalComponent } from "./ParkingSpaceModalComponent";
 
 function InnerRow({
   start,
@@ -13,7 +12,7 @@ function InnerRow({
   end: number;
   first?: boolean;
 }) {
-  const { parkingSpaces } = useParking();
+  const parkingSpaces = useParking();
 
   const blank = [0, 1].map((idx) => <div key={idx} />);
 
@@ -29,7 +28,7 @@ function InnerRow({
 }
 
 function OuterRow({ start, end }: { start: number; end: number }) {
-  const { parkingSpaces } = useParking();
+  const parkingSpaces = useParking();
   return (
     <OuterRowContainer>
       {parkingSpaces.slice(start, end).map((space) => (
@@ -39,13 +38,24 @@ function OuterRow({ start, end }: { start: number; end: number }) {
   );
 }
 
-export default function ParkingView() {
-  const { selectedParkingSpace } = useParking();
+function ParkingSpacesAvailable() {
+  const parkingSpaces = useParking();
+  const freeSpaces = parkingSpaces.filter(
+    (parkingSpace) => !parkingSpace.ticket
+  ).length;
+  return (
+    <ParkingState>
+      <div>Parking Spaces Available:</div>
+      <div className={freeSpaces === 0 ? "full free-spaces" : "free-spaces"}>
+        {freeSpaces === 0 ? "FULL" : freeSpaces}
+      </div>
+    </ParkingState>
+  );
+}
 
-  const freeSpaces = (window as any).getFreeSpaces();
+export default function ParkingView() {
   return (
     <Container>
-      {selectedParkingSpace && <ParkingSpaceModalComponent />}
       <Parking>
         <OuterRow start={0} end={16} />
         <div />
@@ -54,13 +64,10 @@ export default function ParkingView() {
         <div />
         <OuterRow start={38} end={54} />
       </Parking>
-      <ParkingState>
-        <div>Parking Spaces Available:</div>
-        <div className={freeSpaces === 0 ? "full free-spaces" : "free-spaces"}>
-          {freeSpaces === 0 ? "FULL" : freeSpaces}
-        </div>
-      </ParkingState>
-      <Message>Please click on a parking place to park, leave, pay or get state.</Message>
+      <ParkingSpacesAvailable />
+      <Message>
+        Please click on a parking place to park, leave, pay or get state.
+      </Message>
     </Container>
   );
 }
@@ -81,8 +88,7 @@ const ParkingState = styled.div`
 
   & .free-spaces {
     font-size: 45px;
-    color: #8BC34A;
-    font-family: fantasy;
+    color: #8bc34a;
     &.full {
       color: red;
     }
@@ -119,7 +125,6 @@ interface InnerRowContainerProps {
 const InnerRowContainer = styled(OuterRowContainer)<InnerRowContainerProps>`
   & > div {
     border-bottom: ${(props) => (props.first ? "1px solid black" : "none")};
-    z-index: ${(props) => (props.first ? "1" : "0")};
   }
   & > div:first-of-type,
   & > div:nth-of-type(14) {

@@ -1,18 +1,29 @@
 import * as React from "react";
 import { PARKING_CAPACITY } from "../config";
 import {
+  DispatchType,
   ParkingContextType,
+  ParkingDispatchContextType,
   ParkingSpace,
   ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
   PaymentMethod,
 } from "./types";
-import { formattedDate, getRandumNumber, paidDateExired } from "../utils/utils";
+import { formattedDate } from "../utils/utils";
 import { paymentMethods, ticketState } from "./constant";
-import { calculatePriceByDates, calculatePriceByParkingSpace } from "../services/parking";
+import {
+  calculatePriceByDates,
+  calculatePriceByParkingSpace,
+  createNewTicket,
+  paidDateExired,
+  updateTicketState,
+} from "../services/parking";
 
 export const ParkingContext = React.createContext<
   ParkingContextType | undefined
+>(undefined);
+export const ParkingDispatchContext = React.createContext<
+  ParkingDispatchContextType | undefined
 >(undefined);
 
 function initParking(): ParkingSpace[] {
@@ -61,84 +72,19 @@ export function ParkingContextProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [parkingSpaces, setParkingSpaces] = React.useState(initParking());
-  const [selectedParkingSpace, setSelectedParkingSpace] =
-    React.useState<ParkingSpaceWithTicket | null>(null);
-
-  const updateParkingSpace = (parkingSpace: ParkingSpace) => {
-    setParkingSpaces((prev: ParkingSpace[]) => {
-      const temp = prev.map((space) =>
-        space.spaceNumber === parkingSpace.spaceNumber ? parkingSpace : space
-      );
-      localStorage.setItem("parkingSpaces", JSON.stringify(temp));
-      return temp;
-    });
-
-    return parkingSpace;
-  };
-
-  const park = (spaceNumber: number) => {
-    const parkingSpace: ParkingSpaceWithTicket = {
-      spaceNumber,
-      ticket: {
-        barcode: getRandumNumber(16).toString(),
-        enterDate: Date.now(), // get current date
-        state: ticketState.unpaid,
-        paid: 0,
-      },
-    };
-    const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
-      const temp = updateParkingSpace(parkingSpace) as ParkingSpaceWithTicket;
-      if (temp) resolve(temp);
-      else rejct("Error!");
-    });
-    return p;
-  };
-
-  const leave = (spaceNumber: number) => {
-    const p = new Promise<ParkingSpace>((resolve) =>
-      resolve(
-        updateParkingSpace({
-          spaceNumber,
-          ticket: null,
-        })
-      )
-    );
-    return p;
-  };
-
-  const updateTicket = (parkingSpace: ParkingSpaceWithTicket) => {
-    const p = new Promise<ParkingSpaceWithTicket>((resolve, rejct) => {
-      const temp = updateParkingSpace(
-        parkingSpace
-      ) as ParkingSpaceWithPaidTicket;
-      if (temp) resolve(temp);
-      else rejct("Error!");
-    });
-    return p;
-  };
-
-  const initialState: ParkingContextType = {
-    parkingSpaces,
-    park,
-    leave,
-    selectedParkingSpace,
-    setSelectedParkingSpace,
-    updateTicket,
-  };
-
-
-  const getTicket = async () => {
+  const getTicket = () => {
     const firstEmptyParkingSpace = parkingSpaces.find((obj) => {
       return !obj.ticket;
     });
 
     if (firstEmptyParkingSpace) {
+      firstEmptyParkingSpace.ticket = createNewTicket();
       try {
-        const res: ParkingSpaceWithTicket = await park(
-          firstEmptyParkingSpace.spaceNumber
-        );
-        return res.ticket.barcode;
+        dispatch({
+          type: "update",
+          parkingSpace: firstEmptyParkingSpace,
+        });
+        return firstEmptyParkingSpace.ticket.barcode;
       } catch (error) {
         console.log(error);
       }
@@ -148,9 +94,8 @@ export function ParkingContextProvider({
   };
 
   (window as any).getTicket = getTicket; //To access getTicket from developer console!
-  
 
-  const calculatePrice = async (barcode: string) => {
+  const calculatePrice = (barcode: string) => {
     const parkingSpace = getParkingSpaceByBarcode(barcode);
 
     if (parkingSpace) {
@@ -191,7 +136,9 @@ export function ParkingContextProvider({
         }
 
         return price;
-      } catch (error) {}
+      } catch (error) {
+        console.log(error);
+      }
     } else {
       return `No barcode #${barcode} found!`;
     }
@@ -205,7 +152,7 @@ export function ParkingContextProvider({
     });
   };
 
-  const payTicket = async (barcode: string, paymentMethod: PaymentMethod) => {
+  const payTicket = (barcode: string, paymentMethod: PaymentMethod) => {
     if (!paymentMethods.includes(paymentMethod)) {
       return `No payment method "${paymentMethod}" found!`;
     }
@@ -213,21 +160,24 @@ export function ParkingContextProvider({
 
     if (parkingSpace) {
       try {
-        await getTicketState(barcode); //update payment state!
+        const state = getTicketState(barcode); //update payment state!
 
-        if (parkingSpace?.ticket?.state === ticketState.paid) {
+        if (state === ticketState.paid) {
           return `Ticket #${barcode} has been paid!`;
         } else {
           const ps = parkingSpace as ParkingSpaceWithTicket;
 
-          await updateTicket({
-            ...ps,
-            ticket: {
-              ...ps.ticket,
-              paymentMethod: paymentMethod,
-              paymentDate: Date.now(),
-              paid: calculatePriceByParkingSpace(ps),
-              state: ticketState.paid,
+          dispatch({
+            type: "update",
+            parkingSpace: {
+              ...ps,
+              ticket: {
+                ...ps.ticket,
+                paymentMethod: paymentMethod,
+                paymentDate: Date.now(),
+                paid: calculatePriceByParkingSpace(ps),
+                state: ticketState.paid,
+              },
             },
           });
           return `Ticket #${barcode} paid!`;
@@ -242,33 +192,48 @@ export function ParkingContextProvider({
 
   (window as any).payTicket = payTicket; //To access payTicket from developer console!
 
-  const getTicketState = async (barcode: string) => {
+  const getTicketState = (barcode: string) => {
     const parkingSpace = getParkingSpaceByBarcode(barcode);
 
-    if (parkingSpace?.ticket?.state === ticketState.unpaid) {
-      return ticketState.unpaid;
-    }
-
     if (parkingSpace) {
-      //Ticket has been paid but the payment date may have expired
-      const res = await updateTicket(parkingSpace as ParkingSpaceWithPaidTicket);
-      return res.ticket.state;
+      if (parkingSpace?.ticket?.state === ticketState.unpaid) {
+        return ticketState.unpaid;
+      }
+
+      const ps = updateTicketState(parkingSpace as ParkingSpaceWithPaidTicket);
+      dispatch({
+        type: "update",
+        parkingSpace: ps,
+      });
+
+      return ps.ticket.state;
     } else {
       return `No barcode #${barcode} found!`;
     }
   };
 
   (window as any).getTicketState = getTicketState; //To access payTicket from developer console!
-  
+
   const getFreeSpaces = () => {
     return parkingSpaces.filter((parkingSpace) => !parkingSpace.ticket).length;
   };
 
   (window as any).getFreeSpaces = getFreeSpaces;
 
+  const [parkingSpaces, dispatch] = React.useReducer(
+    parkingSpacesReducer,
+    initParking()
+  );
+
+  React.useEffect(() => {
+    localStorage.setItem("parkingSpaces", JSON.stringify(parkingSpaces));
+  }, [parkingSpaces]);
+
   return (
-    <ParkingContext.Provider value={initialState}>
-      {children}
+    <ParkingContext.Provider value={parkingSpaces}>
+      <ParkingDispatchContext.Provider value={dispatch}>
+        {children}
+      </ParkingDispatchContext.Provider>
     </ParkingContext.Provider>
   );
 }
@@ -280,4 +245,32 @@ export function useParking(): ParkingContextType {
   }
 
   return context;
+}
+export function useParkingDispatch(): ParkingDispatchContextType {
+  const context = React.useContext(ParkingDispatchContext);
+  if (context === undefined) {
+    throw new Error("useParking called outside context.");
+  }
+
+  return context;
+}
+
+function parkingSpacesReducer(
+  parkingSpaces: ParkingSpace[],
+  action: DispatchType
+) {
+  switch (action.type) {
+    case "update": {
+      return parkingSpaces.map((t) => {
+        if (t.spaceNumber === action.parkingSpace.spaceNumber) {
+          return action.parkingSpace;
+        } else {
+          return t;
+        }
+      });
+    }
+    default: {
+      throw Error("Unknown action: " + action.type);
+    }
+  }
 }

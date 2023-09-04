@@ -1,56 +1,57 @@
 import * as React from "react";
 import styled from "styled-components";
-import { useParking } from "../context/parkingContext";
+import { useParkingDispatch } from "../context/parkingContext";
 import {
   ParkingSpace,
   ParkingSpaceWithPaidTicket,
-  ParkingSpaceWithTicket
+  ParkingSpaceWithTicket,
 } from "../context/types";
-import { paidDateExired } from "../utils/utils";
 
-import {
-  expirePaidDateDuration,
-  ticketState,
-} from "../context/constant";
+import { expirePaidDateDuration, ticketState } from "../context/constant";
 import Timer from "../components/Timer";
+import {
+  calculatePriceByParkingSpace,
+  createNewTicket,
+  updateTicketState,
+} from "../services/parking";
+import { ModalComponent } from "../components/Modal";
+import { PaymentReceipt } from "./PaymentReceipt";
+import { TicketPayment } from "./TicketPayment";
 
 export function ParkingBox({
   parkingSpace,
 }: {
   parkingSpace: ParkingSpace;
 }): JSX.Element {
-
-  const { park, leave, setSelectedParkingSpace, updateTicket } =
-    useParking();
+  const dispatch = useParkingDispatch();
   const { spaceNumber, ticket } = parkingSpace;
 
-  const togglePlace = async () => {
+  const [visibleModal, setVisibleModal] = React.useState<boolean>(false);
+
+  const togglePlace = () => {
     try {
-      const res = ticket ? leave(spaceNumber) : park(spaceNumber);
-      res.then((e) => {
-        console.log(e.ticket?.barcode);
+      const newTicket = ticket ? null : createNewTicket();
+      dispatch({
+        type: "update",
+        parkingSpace: {
+          spaceNumber,
+          ticket: newTicket,
+        },
       });
     } catch (error) {
       console.log(error);
     }
   };
 
-  const parkingSpacePriceModal = () => {
-    setSelectedParkingSpace(parkingSpace as ParkingSpaceWithTicket);
-  };
-
-  const updateTicketState = async (ps: ParkingSpaceWithPaidTicket) => {
+  const onExireTimer = () => {
     try {
-      const res = await updateTicket({
-        ...ps,
-        ticket: {
-          ...ps.ticket,
-          state: paidDateExired(ps.ticket.paymentDate)
-            ? ticketState.unpaid
-            : ticketState.paid,
-        },
+      dispatch({
+        type: "update",
+        parkingSpace: updateTicketState(
+          parkingSpace as ParkingSpaceWithPaidTicket
+        ),
       });
-      return res.ticket.state;
+      // return res.ticket.state;
     } catch (error) {
       console.log(error);
     }
@@ -64,11 +65,58 @@ export function ParkingBox({
     return temp > 0 ? temp : expirePaidDateDuration;
   };
 
+  const onParkingSpaceStateClick = () => {
+    const ps = parkingSpace as ParkingSpaceWithTicket;
+    const price = calculatePriceByParkingSpace(ps) - ps.ticket.paid;
+    if (price === 0 && ps.ticket.state === ticketState.unpaid) {
+      parkingSpace = {
+        ...ps,
+        ticket: {
+          ...ps.ticket,
+          paymentDate: Date.now(),
+          state: ticketState.paid,
+        },
+      };
+      try {
+        dispatch({
+          type: "update",
+          parkingSpace,
+        });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    setVisibleModal(true);
+  };
+
+  const closeModal = () => {
+    setVisibleModal(false);
+  };
   return (
     <ParkingBoxContainer className={ticket ? "occupied" : "free"}>
+      {visibleModal && (
+        <ModalComponent closeModal={closeModal}>
+          {parkingSpace.ticket?.state === ticketState.paid ? (
+            <PaymentReceipt
+              parkingSpace={parkingSpace as ParkingSpaceWithPaidTicket}
+            />
+          ) : (
+            <TicketPayment
+              parkingSpace={parkingSpace as ParkingSpaceWithTicket}
+              closeModal={closeModal}
+            />
+          )}
+        </ModalComponent>
+      )}
+
       <ParkingBoxContent
         className={!ticket ? "free" : ""}
-        onClick={togglePlace}
+        onClick={
+          ticket?.state === ticketState.unpaid
+            ? onParkingSpaceStateClick
+            : togglePlace
+        }
       >
         {spaceNumber}
       </ParkingBoxContent>
@@ -77,9 +125,7 @@ export function ParkingBox({
         <ParkingBoxContent className={"price state"}>
           <Timer
             remainMilisecond={remainMilisecond()}
-            timerExpired={() => {
-              updateTicketState(parkingSpace as ParkingSpaceWithPaidTicket);
-            }}
+            timerExpired={onExireTimer}
           />
         </ParkingBoxContent>
       )}
@@ -87,7 +133,7 @@ export function ParkingBox({
       {ticket && (
         <ParkingBoxContent
           className={"price " + ticket?.state}
-          onClick={parkingSpacePriceModal}
+          onClick={onParkingSpaceStateClick}
         >
           €
         </ParkingBoxContent>
@@ -121,14 +167,12 @@ const ParkingBoxContent = styled.div`
     height: 100%;
   }
   &.price {
-    background: #00bcd4;
-
     &.paid {
-      background: #66bb6a;
+      background: var(--paid-spot);
     }
 
     &.state {
-      background: #ffeb3b;
+      background: var(--state-spot);
     }
   }
 `;

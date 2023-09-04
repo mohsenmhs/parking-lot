@@ -15,5 +15,3 @@ export function formattedDate(date: Date) {
   });
 }
 
-export const paidDateExired = (paidDate: number) =>
-  (Date.now() - paidDate) > expirePaidDateDuration;
