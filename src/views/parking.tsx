@@ -55,7 +55,7 @@ export default function ParkingView() {
         <OuterRow start={38} end={54} />
       </Parking>
       <ParkingState>
-        <div>Parking Available Spaces:</div>
+        <div>Parking Spaces Available:</div>
         <div className={freeSpaces === 0 ? "full free-spaces" : "free-spaces"}>
           {freeSpaces === 0 ? "FULL" : freeSpaces}
         </div>
@@ -80,9 +80,9 @@ const ParkingState = styled.div`
   margin: 10px auto;
 
   & .free-spaces {
-    font-size: 35px;
-    color: green;
-
+    font-size: 45px;
+    color: #8BC34A;
+    font-family: fantasy;
     &.full {
       color: red;
     }
