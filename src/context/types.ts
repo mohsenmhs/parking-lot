@@ -34,17 +34,16 @@ export interface ParkingSpaceWithPaidTicket extends ParkingSpace {
   };
 }
 
-export interface ParkingContextType {
-  parkingSpaces: ParkingSpace[];
-  park: (spaceNumber: number) => Promise<ParkingSpaceWithTicket>;
-  leave: (spaceNumber: number) => Promise<ParkingSpace>;
-  selectedParkingSpace: ParkingSpaceWithTicket | null;
-  setSelectedParkingSpace: (
-    selectedParkingSpace: ParkingSpaceWithTicket | null
-  ) => void;
-  updateTicket: (
-    parkingSpace: ParkingSpaceWithTicket,
-  ) => Promise<ParkingSpaceWithTicket>;
-}
+export type DispatchType = {
+  type: string;
+  parkingSpace: ParkingSpace;
+};
+
+export type ParkingContextType = ParkingSpace[];
+
+export type ParkingDispatchContextType = ({
+  type,
+  parkingSpace,
+}: DispatchType) => void;
 
 export type PaymentMethod = (typeof paymentMethods)[number];

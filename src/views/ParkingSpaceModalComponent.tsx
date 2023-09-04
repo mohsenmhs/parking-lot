@@ -1,6 +1,6 @@
 import * as React from "react";
 import styled from "styled-components";
-import { useParking } from "../context/parkingContext";
+import { useParkingDispatch } from "../context/parkingContext";
 import {
   ParkingSpaceWithPaidTicket,
   ParkingSpaceWithTicket,
@@ -10,14 +10,15 @@ import { calculatePriceByParkingSpace } from "../services/parking";
 import { formattedDate } from "../utils/utils";
 import { paymentMethods, ticketState } from "../context/constant";
 
-export function ParkingSpaceModalComponent() {
-  const { selectedParkingSpace, setSelectedParkingSpace } = useParking();
-  const closeModal = () => setSelectedParkingSpace(null);
-
+export function ParkingSpaceModalComponent({
+  parkingSpace,
+  closeModal,
+}: {
+  parkingSpace: ParkingSpaceWithTicket;
+  closeModal: () => void;
+}) {
   const price =
-    calculatePriceByParkingSpace(
-      selectedParkingSpace as ParkingSpaceWithTicket
-    ) - (selectedParkingSpace as ParkingSpaceWithTicket).ticket.paid;
+    calculatePriceByParkingSpace(parkingSpace) - parkingSpace.ticket.paid;
   return (
     <ParkingSpaceModal onClick={closeModal}>
       <ParkingSpaceContainer
@@ -35,26 +36,41 @@ export function ParkingSpaceModalComponent() {
         </button>
 
         {price > 0 ? (
-          <PaymentMethods closeModal={closeModal} price={price} />
+          <PaymentMethods
+            closeModal={closeModal}
+            price={price}
+            parkingSpace={parkingSpace as ParkingSpaceWithTicket}
+          />
         ) : (
-          <PaymentReceipt price={price} />
+          <PaymentReceipt
+            price={price}
+            parkingSpace={parkingSpace as ParkingSpaceWithPaidTicket}
+          />
         )}
       </ParkingSpaceContainer>
     </ParkingSpaceModal>
   );
 }
 
-const PaymentReceipt = ({ price }: { price: number }) => {
-  const { selectedParkingSpace, updateTicket } = useParking();
+const PaymentReceipt = ({
+  price,
+  parkingSpace,
+}: {
+  price: number;
+  parkingSpace: ParkingSpaceWithPaidTicket;
+}) => {
+  const dispatch = useParkingDispatch();
   const updateParkingSpace = async () => {
     try {
-      const ps = selectedParkingSpace as ParkingSpaceWithTicket;
-      await updateTicket({
-        ...ps,
-        ticket: {
-          ...ps.ticket,
-          paymentDate: Date.now(),
-          state: ticketState.paid,
+      dispatch({
+        type: "update",
+        parkingSpace: {
+          ...parkingSpace,
+          ticket: {
+            ...parkingSpace.ticket,
+            paymentDate: Date.now(),
+            state: ticketState.paid,
+          },
         },
       });
     } catch (error) {
@@ -62,7 +78,7 @@ const PaymentReceipt = ({ price }: { price: number }) => {
     }
   };
   React.useEffect(() => {
-    if (selectedParkingSpace?.ticket.state === ticketState.unpaid) {
+    if (parkingSpace.ticket.state === ticketState.unpaid) {
       updateParkingSpace();
     }
   }, []);
@@ -71,47 +87,31 @@ const PaymentReceipt = ({ price }: { price: number }) => {
       <div className="bold-text">Payment Receipt</div>
 
       <div>
-        <div className="receiot-item">
+        <div className="receipt-item">
           <div>Barcode:</div>
-          <div>{selectedParkingSpace?.ticket.barcode}</div>
+          <div>{parkingSpace.ticket.barcode}</div>
         </div>
 
-        <div className="receiot-item">
+        <div className="receipt-item">
           <div>Enter Date:</div>
-          <div>
-            {formattedDate(
-              new Date(
-                (
-                  selectedParkingSpace as ParkingSpaceWithPaidTicket
-                ).ticket.enterDate
-              )
-            )}
-          </div>
+          <div>{formattedDate(new Date(parkingSpace.ticket.enterDate))}</div>
         </div>
 
-        <div className="receiot-item">
+        <div className="receipt-item">
           <div>Payment Date:</div>
-          <div>
-            {formattedDate(
-              new Date(
-                (
-                  selectedParkingSpace as ParkingSpaceWithPaidTicket
-                ).ticket.paymentDate
-              )
-            )}
-          </div>
+          <div>{formattedDate(new Date(parkingSpace.ticket.paymentDate))}</div>
         </div>
 
-        <div className="receiot-item">
+        <div className="receipt-item">
           <div>Last Payment Method:</div>
-          <div>{selectedParkingSpace?.ticket.paymentMethod}</div>
+          <div>{parkingSpace.ticket.paymentMethod}</div>
         </div>
       </div>
 
       <div>
-        <div className="receiot-item bold-text">
+        <div className="receipt-item bold-text">
           <div>Paid:</div>
-          <div>€{selectedParkingSpace?.ticket.paid}</div>
+          <div>€{parkingSpace.ticket.paid}</div>
         </div>
       </div>
 
@@ -123,26 +123,30 @@ const PaymentReceipt = ({ price }: { price: number }) => {
 const PaymentMethods = ({
   closeModal,
   price,
+  parkingSpace,
 }: {
   closeModal: () => void;
   price: number;
+  parkingSpace: ParkingSpaceWithTicket;
 }) => {
-  const { selectedParkingSpace, updateTicket } = useParking();
+  const dispatch = useParkingDispatch();
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     React.useState<PaymentMethod | null>(null);
 
   const payNow = async () => {
     try {
-      const ps = selectedParkingSpace as ParkingSpaceWithTicket;
-      await updateTicket({
-        ...ps,
-        ticket: {
-          ...ps.ticket,
-          paymentMethod: selectedPaymentMethod,
-          paymentDate: Date.now(),
-          state: ticketState.paid,
-          paid: price + ps.ticket.paid,
+      dispatch({
+        type: "update",
+        parkingSpace: {
+          ...parkingSpace,
+          ticket: {
+            ...parkingSpace.ticket,
+            paymentMethod: selectedPaymentMethod,
+            paymentDate: Date.now(),
+            state: ticketState.paid,
+            paid: price + parkingSpace.ticket.paid,
+          },
         },
       });
 
@@ -158,10 +162,10 @@ const PaymentMethods = ({
       <div className="price">
         €{price}
         <div className="subtitle">€2 per started hour</div>
-        {selectedParkingSpace && selectedParkingSpace?.ticket.paid > 0 && (
+        {parkingSpace && parkingSpace.ticket.paid > 0 && (
           <div className="subtitle">
-            You have paid €{selectedParkingSpace?.ticket.paid} on{" "}
-            {formattedDate(new Date(selectedParkingSpace.ticket.enterDate))}
+            You have paid €{parkingSpace.ticket.paid} on{" "}
+            {formattedDate(new Date(parkingSpace.ticket.enterDate))}
           </div>
         )}
       </div>
@@ -221,7 +225,7 @@ const PaymentMethodItem = styled.div`
   & .payment-method {
     padding: 7px 15px;
     background: #f1f1f1;
-    border: 1px solid #676767;
+    border: 1px solid var(--box-border);
     cursor: pointer;
     &.active {
       background: #ffeb3b;
@@ -237,7 +241,7 @@ const ParkingSpaceContainer = styled.div`
   align-items: center;
   justify-content: space-around;
   flex-direction: column;
-  border: 1px dashed #676767;
+  border: 1px dashed var(--box-border);
   position: relative;
   & .price {
     font-size: 45px;
@@ -245,7 +249,7 @@ const ParkingSpaceContainer = styled.div`
   }
   & .subtitle {
     font-size: 12px;
-    color: #676767;
+    color: var(--box-border);
   }
 
   & .close-button {
@@ -255,7 +259,7 @@ const ParkingSpaceContainer = styled.div`
     position: absolute;
     left: 0;
     top: 0;
-    color: #676767;
+    color: var(--box-border);
     cursor: pointer;
     &:hover {
       color: #000;
@@ -264,20 +268,21 @@ const ParkingSpaceContainer = styled.div`
 
   & .pay-button {
     background: #4caf50;
-    border: 1px solid #676767;
+    border: 1px solid var(--box-border);
     padding: 5px 15px;
   }
 `;
 const PaymentReceiptContainer = styled.div`
   width: 250px;
-  border: 1px dashed #676767;
+  border: 1px dashed var(--box-border);
   padding: 10px;
   font-family: monospace;
   gap: 30px;
   display: flex;
   flex-direction: column;
-  & .receiot-item {
+  & .receipt-item {
     display: flex;
     justify-content: space-between;
+    font-size: 13px;
   }
 `;
