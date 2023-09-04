@@ -4,4 +4,4 @@ export enum ticketState {
     unpaid =  "unpaid" 
 }
 
-export const expirePaidDateDuration = 1 * 60 * 1000; ///15 Minutes in milisecond
+export const expirePaidDateDuration = 15 * 60 * 1000; ///15 Minutes in milisecond

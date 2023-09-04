@@ -96,9 +96,7 @@ export function ParkingBox({
   return (
     <ParkingBoxContainer className={ticket ? "occupied" : "free"}>
       {visibleModal && (
-        <ModalComponent
-          closeModal={closeModal}
-        >
+        <ModalComponent closeModal={closeModal}>
           {parkingSpace.ticket?.state === ticketState.paid ? (
             <PaymentReceipt
               parkingSpace={parkingSpace as ParkingSpaceWithPaidTicket}
@@ -114,7 +112,11 @@ export function ParkingBox({
 
       <ParkingBoxContent
         className={!ticket ? "free" : ""}
-        onClick={togglePlace}
+        onClick={
+          ticket?.state === ticketState.unpaid
+            ? onParkingSpaceStateClick
+            : togglePlace
+        }
       >
         {spaceNumber}
       </ParkingBoxContent>
@@ -165,14 +167,12 @@ const ParkingBoxContent = styled.div`
     height: 100%;
   }
   &.price {
-    background: #00bcd4;
-
     &.paid {
-      background: #66bb6a;
+      background: var(--paid-spot);
     }
 
     &.state {
-      background: #ffeb3b;
+      background: var(--state-spot);
     }
   }
 `;

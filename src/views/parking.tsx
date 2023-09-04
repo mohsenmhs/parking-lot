@@ -38,9 +38,22 @@ function OuterRow({ start, end }: { start: number; end: number }) {
   );
 }
 
-export default function ParkingView() {
+function ParkingSpacesAvailable() {
   const parkingSpaces = useParking();
-  const freeSpaces = parkingSpaces.filter((parkingSpace) => !parkingSpace.ticket).length;
+  const freeSpaces = parkingSpaces.filter(
+    (parkingSpace) => !parkingSpace.ticket
+  ).length;
+  return (
+    <ParkingState>
+      <div>Parking Spaces Available:</div>
+      <div className={freeSpaces === 0 ? "full free-spaces" : "free-spaces"}>
+        {freeSpaces === 0 ? "FULL" : freeSpaces}
+      </div>
+    </ParkingState>
+  );
+}
+
+export default function ParkingView() {
   return (
     <Container>
       <Parking>
@@ -51,13 +64,10 @@ export default function ParkingView() {
         <div />
         <OuterRow start={38} end={54} />
       </Parking>
-      <ParkingState>
-        <div>Parking Spaces Available:</div>
-        <div className={freeSpaces === 0 ? "full free-spaces" : "free-spaces"}>
-          {freeSpaces === 0 ? "FULL" : freeSpaces}
-        </div>
-      </ParkingState>
-      <Message>Please click on a parking place to park, leave, pay or get state.</Message>
+      <ParkingSpacesAvailable />
+      <Message>
+        Please click on a parking place to park, leave, pay or get state.
+      </Message>
     </Container>
   );
 }
@@ -78,8 +88,7 @@ const ParkingState = styled.div`
 
   & .free-spaces {
     font-size: 45px;
-    color: #8BC34A;
-    font-family: fantasy;
+    color: #8bc34a;
     &.full {
       color: red;
     }

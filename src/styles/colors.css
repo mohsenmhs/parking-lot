@@ -3,5 +3,7 @@
   --free-spot: #4caf5033;
   --occupied-spot: #ff3d0044;
 
+  --paid-spot: #66bb6a;
+  --state-spot: #ffeb3b;
   --box-border: #676767;
 }
