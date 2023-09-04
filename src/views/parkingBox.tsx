@@ -9,8 +9,14 @@ import {
 
 import { expirePaidDateDuration, ticketState } from "../context/constant";
 import Timer from "../components/Timer";
-import { ParkingSpaceModalComponent } from "./ParkingSpaceModalComponent";
-import { createNewTicket, updateTicketState } from "../services/parking";
+import {
+  calculatePriceByParkingSpace,
+  createNewTicket,
+  updateTicketState,
+} from "../services/parking";
+import { ModalComponent } from "../components/Modal";
+import { PaymentReceipt } from "./PaymentReceipt";
+import { TicketPayment } from "./TicketPayment";
 
 export function ParkingBox({
   parkingSpace,
@@ -24,14 +30,14 @@ export function ParkingBox({
 
   const togglePlace = () => {
     try {
-      const newTicket = ticket ? null : createNewTicket()
+      const newTicket = ticket ? null : createNewTicket();
       dispatch({
         type: "update",
         parkingSpace: {
           spaceNumber,
           ticket: newTicket,
         },
-      })
+      });
     } catch (error) {
       console.log(error);
     }
@@ -41,7 +47,9 @@ export function ParkingBox({
     try {
       dispatch({
         type: "update",
-        parkingSpace: updateTicketState(parkingSpace as ParkingSpaceWithPaidTicket),
+        parkingSpace: updateTicketState(
+          parkingSpace as ParkingSpaceWithPaidTicket
+        ),
       });
       // return res.ticket.state;
     } catch (error) {
@@ -57,15 +65,51 @@ export function ParkingBox({
     return temp > 0 ? temp : expirePaidDateDuration;
   };
 
+  const onParkingSpaceStateClick = () => {
+    const ps = parkingSpace as ParkingSpaceWithTicket;
+    const price = calculatePriceByParkingSpace(ps) - ps.ticket.paid;
+    if (price === 0 && ps.ticket.state === ticketState.unpaid) {
+      parkingSpace = {
+        ...ps,
+        ticket: {
+          ...ps.ticket,
+          paymentDate: Date.now(),
+          state: ticketState.paid,
+        },
+      };
+      try {
+        dispatch({
+          type: "update",
+          parkingSpace,
+        });
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    setVisibleModal(true);
+  };
+
+  const closeModal = () => {
+    setVisibleModal(false);
+  };
   return (
     <ParkingBoxContainer className={ticket ? "occupied" : "free"}>
       {visibleModal && (
-        <ParkingSpaceModalComponent
-          parkingSpace={parkingSpace as ParkingSpaceWithTicket}
-          closeModal={() => {
-            setVisibleModal(false);
-          }}
-        />
+        <ModalComponent
+          closeModal={closeModal}
+        >
+          {parkingSpace.ticket?.state === ticketState.paid ? (
+            <PaymentReceipt
+              parkingSpace={parkingSpace as ParkingSpaceWithPaidTicket}
+            />
+          ) : (
+            <TicketPayment
+              parkingSpace={parkingSpace as ParkingSpaceWithTicket}
+              closeModal={closeModal}
+            />
+          )}
+        </ModalComponent>
       )}
 
       <ParkingBoxContent
@@ -87,7 +131,7 @@ export function ParkingBox({
       {ticket && (
         <ParkingBoxContent
           className={"price " + ticket?.state}
-          onClick={() => setVisibleModal(true)}
+          onClick={onParkingSpaceStateClick}
         >
           €
         </ParkingBoxContent>
